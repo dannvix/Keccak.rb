@@ -6,9 +6,11 @@ This is a pure Ruby implementation of the Keccak algorithm, aka the SHA-3 now.
 
 Example
 -------
-`hasher = Keccak.new`
-`digest = hasher.keccak([128, "00112233445566778899AABBCCDDEEFF"], 576, 1024, 512)`
-`puts digest`
+```ruby
+hasher = Keccak.new
+digest = hasher.keccak([128, "00112233445566778899AABBCCDDEEFF"], 576, 1024, 512)
+puts digest
+```
 
 
 Acknowledgements
