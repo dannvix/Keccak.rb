@@ -23,10 +23,11 @@ VECTORS.each do |vector|
 
       if line.start_with? "MD" or line.start_with? "Squeezed"
         md = line.split(" = ").last.chomp.downcase
+        n = (md.length / 2) * 8 if n == 0
         my_md = keccak.hexdigest([len, msg], r, c, n)
 
         counter += 1
-        if not md.slice(0, my_md.length) == my_md
+        if not md == my_md
           puts "#{pathname.ljust(32)}: Failed :("
           exit(1)
         end
