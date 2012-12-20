@@ -1,88 +1,24 @@
 class Keccak
-  # round constants
-  RC = [0x0000000000000001,
-        0x0000000000008082,
-        0x800000000000808A,
-        0x8000000080008000,
-        0x000000000000808B,
-        0x0000000080000001,
-        0x8000000080008081,
-        0x8000000000008009,
-        0x000000000000008A,
-        0x0000000000000088,
-        0x0000000080008009,
-        0x000000008000000A,
-        0x000000008000808B,
-        0x800000000000008B,
-        0x8000000000008089,
-        0x8000000000008003,
-        0x8000000000008002,
-        0x8000000000000080,
-        0x000000000000800A,
-        0x800000008000000A,
-        0x8000000080008081,
-        0x8000000000008080,
-        0x0000000080000001,
-        0x8000000080008008]
-
-  # rotation offsets
-  R = [[0,    36,     3,    41,    18],
-       [1,    44,    10,    45,     2],
-       [62,    6,    43,    15,    61],
-       [28,   55,    25,    21,    56],
-       [27,   20,    39,     8,    14]]
-
-
-  def initialize (b=1600)
-    # constructor
-    # b: parameter b, must be 25, 50, 100, 200, 400, 800 or 1600 (default)
-    set_b(b)
-  end
-
-  def keccak (m, r=1024, c=576, n=1024)
-    # compute the Keccak[r,c,d] sponge function on message M
-    # m: message pair (length in bits, string of hex characters ("9AFC..."))
-    # r: bitrate in bits (default: 1024)
-    # c: capacity in bits (default: 576)
-    # n: length of output in bits (default: 1024)
-    raise "r must be a multiple of 8 in this implementation" if (r < 0) or not (r % 8) == 0
-    raise "output length must be a multiple of 8" if not (n % 8) == 0
-
-    set_b(r + c)
-    w = (r + c) / 25
-
-    # initialize the state
-    s = ([0] * 25).each_slice(5).to_a
-
-    # padding the message
-    p = pad10star1(m, r)
-
-    # absorbing phase
-    (0...(p.length * 8 / 2 / r)).each do |i|
-      pi = convert_string_to_table(p[i*(2*r/8)...(i+1)*(2*r/8)] + "00" * (c / 8))
-
-      (0...5).each do |y|
-        (0...5).each do |x|
-          s[x][y] = s[x][y] ^ pi[x][y]
-        end
-      end
-      s = keccak_f(s)
-    end
-
-    # squeezing phase
-    z = ""
-    output_len = n
-    while output_len > 0 do
-      string = convert_table_to_string(s)
-      z = "#{z}#{string[0...(r*2/8)]}"
-      output_len -= r
-      keccak_f(s) if output_len > 0
-    end
-
-    return z[0...(2*n/8)]
+  def hexdigest (m, r=1024, c=576, n=1024)
+    keccak(m, r, c, n).downcase
   end
 
   private
+    # round constants
+    RC = [0x0000000000000001, 0x0000000000008082, 0x800000000000808A,
+          0x8000000080008000, 0x000000000000808B, 0x0000000080000001,
+          0x8000000080008081, 0x8000000000008009, 0x000000000000008A,
+          0x0000000000000088, 0x0000000080008009, 0x000000008000000A,
+          0x000000008000808B, 0x800000000000008B, 0x8000000000008089,
+          0x8000000000008003, 0x8000000000008002, 0x8000000000000080,
+          0x000000000000800A, 0x800000008000000A, 0x8000000080008081,
+          0x8000000000008080, 0x0000000080000001, 0x8000000080008008]
+  
+    # rotation offsets
+    R = [[ 0, 36,  3, 41, 18], [ 1, 44, 10, 45,  2],
+         [62,  6, 43, 15, 61], [28, 55, 25, 21, 56],
+         [27, 20, 39,  8, 14]]
+
     def set_b (b)
       if not [25, 50, 100, 200, 400, 800, 1600].include? b
         raise "b value not supported - use 25, 50, 100, 200, 400, 800, or 1600"
@@ -231,6 +167,49 @@ class Keccak
         end
         string = "#{string}80"
       end
+    end
+
+    def keccak (m, r=1024, c=576, n=1024)
+      # compute the Keccak[r,c,d] sponge function on message M
+      # m: message pair (length in bits, string of hex characters ("9AFC..."))
+      # r: bitrate in bits (default: 1024)
+      # c: capacity in bits (default: 576)
+      # n: length of output in bits (default: 1024)
+      raise "r must be a multiple of 8 in this implementation" if (r < 0) or not (r % 8) == 0
+      raise "output length must be a multiple of 8" if not (n % 8) == 0
+  
+      set_b(r + c)
+      w = (r + c) / 25
+  
+      # initialize the state
+      s = ([0] * 25).each_slice(5).to_a
+  
+      # padding the message
+      p = pad10star1(m, r)
+  
+      # absorbing phase
+      (0...(p.length * 8 / 2 / r)).each do |i|
+        pi = convert_string_to_table(p[i*(2*r/8)...(i+1)*(2*r/8)] + "00" * (c / 8))
+  
+        (0...5).each do |y|
+          (0...5).each do |x|
+            s[x][y] = s[x][y] ^ pi[x][y]
+          end
+        end
+        s = keccak_f(s)
+      end
+  
+      # squeezing phase
+      z = ""
+      output_len = n
+      while output_len > 0 do
+        string = convert_table_to_string(s)
+        z = "#{z}#{string[0...(r*2/8)]}"
+        output_len -= r
+        keccak_f(s) if output_len > 0
+      end
+  
+      return z[0...(2*n/8)]
     end
 end
 
