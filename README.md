@@ -13,9 +13,19 @@ puts digest #sha-512
 ```
 
 
-Acknowledgement
----------------
-Thanks to **Renaud Bauvin** for his Python implementation of the Kaccak.
+Test
+----
+```shell
+cd test
+ruby test.rb
+```
+
+The test cases come from [offcial known answers](http://keccak.noekeon.org/files.html).
+
+
+Credit
+------
+Thanks to **Renaud Bauvin** for his [Python implementation](http://keccak.noekeon.org/files.html) of the Kaccak.
 
 
 Reference
