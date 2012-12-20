@@ -8,18 +8,18 @@ Example
 -------
 ```ruby
 keccak = Keccak.new
-digest = keccak.hexdigest([128, "00112233445566778899AABBCCDDEEFF"])
+digest = keccak.hexdigest "hello world"
 puts digest #sha-512
 ```
 
 
-Acknowledgements
-----------------
+Acknowledgement
+---------------
 Thanks to **Renaud Bauvin** for his Python implementation of the Kaccak.
 
 
-References
-----------
+Reference
+---------
 Keccak official site: [The Keccak sponge function family](http://keccak.noekeon.org/)
 
 
