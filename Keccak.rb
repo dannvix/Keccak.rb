@@ -1,9 +1,3 @@
-# simple die function
-def die (msg="")
-  puts "Error! #{msg}"
-  exit(1)
-end
-
 class Keccak
   # round constants
   RC = [0x0000000000000001,
@@ -51,8 +45,8 @@ class Keccak
     # r: bitrate in bits (default: 1024)
     # c: capacity in bits (default: 576)
     # n: length of output in bits (default: 1024)
-    die "r must be a multiple of 8 in this implementation" if (r < 0) or not (r % 8) == 0
-    die "output length must be a multiple of 8" if not (n % 8) == 0
+    raise "r must be a multiple of 8 in this implementation" if (r < 0) or not (r % 8) == 0
+    raise "output length must be a multiple of 8" if not (n % 8) == 0
 
     set_b(r + c)
     w = (r + c) / 25
@@ -91,7 +85,7 @@ class Keccak
   private
     def set_b (b)
       if not [25, 50, 100, 200, 400, 800, 1600].include? b
-        die "b value not supported - use 25, 50, 100, 200, 400, 800, or 1600"
+        raise "b value not supported - use 25, 50, 100, 200, 400, 800, or 1600"
       end
 
       @b = b
@@ -108,7 +102,7 @@ class Keccak
 
     def from_hex_string_to_lane (string)
       # convert a string of bytes written in hex to a lane value
-      die "The provided string does not end with a full byte" if not (string.length % 2) == 0
+      raise "The provided string does not end with a full byte" if not (string.length % 2) == 0
 
       ret = ""
       bytes = string.length / 2
@@ -134,8 +128,8 @@ class Keccak
     def convert_string_to_table (string)
       # convert a string of bytes to its 5x5 matrix representation
       # string: string of bytes of hex-coded bytes (e.g. "9A2C....")
-      die "w is not a multiple of 8" if not (@w % 8) == 0
-      die "string can't be divided in 25 blocks of w bits, i.e. string must have exactly b bits" if not string.length == (2 * @b / 8)
+      raise "w is not a multiple of 8" if not (@w % 8) == 0
+      raise "string can't be divided in 25 blocks of w bits, i.e. string must have exactly b bits" if not string.length == (2 * @b / 8)
 
       ret = ([0] * 25).each_slice(5).to_a
       (0...5).each do |x|
@@ -149,7 +143,7 @@ class Keccak
 
     def convert_table_to_string (table)
       # convert a 5x5 matrix representation to its string representation
-      die "w is not a multiple of 8" if not (@w % 8) == 0
+      raise "w is not a multiple of 8" if not (@w % 8) == 0
       dir "table must be 5x5" if not (table.length == 5 and table.select{|c| c.length == 5}.length == 5)
 
       ret = [""] * 25
@@ -213,11 +207,11 @@ class Keccak
       # n: length in bits (must be a multiple of 8)
       # Example: pad10star1([60, "BA594E0FB9EBBD30"], 8) # => "BA594E0FB9EBBD93"
       string_len, string = m
-      die "n must be a multiple of 8" if not (n % 8) == 0
+      raise "n must be a multiple of 8" if not (n % 8) == 0
 
       # pad with one '0' to reach correct length (don't know test vectors coding)
       string = "#{string}0" if not (string.length % 2) == 0
-      die "the string is too short to contain the number of bits announced" if string_len > (string.length / 2 * 8)
+      raise "the string is too short to contain the number of bits announced" if string_len > (string.length / 2 * 8)
 
       nr_bytes_filled = string_len / 8
       nbr_bits_filled = string_len % 8
