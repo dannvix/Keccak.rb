@@ -15,7 +15,7 @@ puts digest
 
 Acknowledgements
 ----------------
-Thanks **Renaud Bauvin** for his Python implementation of the Kaccak.
+Thanks to **Renaud Bauvin** for his Python implementation of the Kaccak.
 
 
 References
@@ -25,7 +25,7 @@ Keccak official site: [The Keccak sponge function family](http://keccak.noekeon.
 
 License
 -------
-Licensed under the MIT licensed.
+Licensed under the [MIT license](http://opensource.org/licenses/mit-license.php).
 
 Copyright (c) 2012 Shao-Chung Chen
 
