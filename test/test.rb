@@ -24,7 +24,9 @@ VECTORS.each do |vector|
       if line.start_with? "MD" or line.start_with? "Squeezed"
         md = line.split(" = ").last.chomp.downcase
         n = (md.length / 2) * 8 if n == 0
-        my_md = keccak.hexdigest([len, msg], r, c, n)
+
+        bytes = msg.chars.each_slice(2).to_a.map{|b| b.join.to_i(16).chr }.join
+        my_md = keccak.hexdigest(bytes, r, c, n, len)
 
         counter += 1
         if not md == my_md

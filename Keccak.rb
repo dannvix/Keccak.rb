@@ -1,6 +1,16 @@
 class Keccak
-  def hexdigest (m, r=1024, c=576, n=1024)
-    keccak(m, r, c, n).downcase
+  def self.hexdigest (msg, r=576, c=1024, n=512, len=nil)
+    keccak = self.new
+    keccak.hexdigest(msg, r, c, n, len)
+  end
+
+  def hexdigest (msg, r=576, c=1024, n=512, len=nil)
+    # msg: message string, e.g. "hello world"
+    # len: specified message length (in bits)
+    # returns Keccak hash in string of hex
+    hex = msg.each_byte.map{|b| "%02x" % b}.join
+    len ||= (msg.length * 8)
+    keccak([len, hex], r, c, n).downcase
   end
 
   private
@@ -55,13 +65,13 @@ class Keccak
       raise "w is not a multiple of 8" if not (@w % 8) == 0
       raise "string can't be divided in 25 blocks of w bits, i.e. string must have exactly b bits" if not string.length == (2 * @b / 8)
       seglen = (2 * @w / 8)
-      string.chars.each_slice(seglen * 5).map{|r| r.each_slice(seglen).map{|c| from_hex_string_to_lane(c.join)}}.transpose
+      string.chars.each_slice(seglen * 5).map{|r| r.each_slice(seglen).map{|c| from_hex_string_to_lane(c.join) } }.transpose
     end
 
     def convert_table_to_string (table)
       # convert a 5x5 matrix representation to its string representation
       raise "w is not a multiple of 8" if not (@w % 8) == 0
-      raise "table must be 5x5" if not (table.length == 5 and table.select{|c| c.length == 5}.length == 5)
+      raise "table must be 5x5" if not (table.length == 5 and table.select{|c| c.length == 5 }.length == 5)
       table.transpose.map{|r| r.map{|c| from_lane_to_hex_string(c)}.join}.join
     end
 
