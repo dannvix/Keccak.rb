@@ -26,39 +26,24 @@ class Keccak
 
       @b = b
       @w = b / 25
-      @l = Math.log2(@w).floor
-      @nr = 12 + (2 * @l)
     end
 
     def rot (x, n)
       # bitwise rotation (to the left) of n bits considering the string of bits is w bits long
-      n = n % @w
-      return ((x >> (@w - n)) + (x << n)) % (1 << @w)
+      ((x >> (@w - (n % @w))) + (x << (n % @w))) % (1 << @w)
     end
 
     def from_hex_string_to_lane (string)
       # convert a string of bytes written in hex to a lane value
+      # example: string = "5f085c1f91f2e5eb", returns 0xebe5f2911f5c085f
       raise "The provided string does not end with a full byte" if not (string.length % 2) == 0
-
-      ret = ""
-      bytes = string.length / 2
-      (0...bytes).each do |i|
-        offset = (bytes - i - 1) * 2
-        ret += string[offset...offset+2]
-      end
-      return ret.to_i(16)
+      string.scan(/../).reverse.join.to_i(16)
     end
 
     def from_lane_to_hex_string (lane)
       # convert a lane value to a string of bytes written in hex
-      lane_hex = (("%%0%dX" % (@w/4)) % lane)
-      ret = ""
-      bytes = lane_hex.length / 2
-      (0...bytes).each do |i|
-        offset = (bytes - i - 1) * 2
-        ret += lane_hex[offset...offset+2]
-      end
-      return ret.upcase
+      # example: lane = 899931b4c7c6a6d, returns "6d6a7c4c1b939908"
+      lane.to_s(16).rjust((@w / 4), "0").scan(/../).reverse.join
     end
 
     def convert_string_to_table (string)
@@ -66,29 +51,15 @@ class Keccak
       # string: string of bytes of hex-coded bytes (e.g. "9A2C....")
       raise "w is not a multiple of 8" if not (@w % 8) == 0
       raise "string can't be divided in 25 blocks of w bits, i.e. string must have exactly b bits" if not string.length == (2 * @b / 8)
-
-      ret = ([0] * 25).each_slice(5).to_a
-      (0...5).each do |x|
-        (0...5).each do |y|
-          offset = 2 * ((5 * y + x) * @w) / 8
-          ret[x][y] = from_hex_string_to_lane(string[offset...(offset+(2 * @w / 8))])
-        end
-      end
-      return ret
+      seglen = (2 * @w / 8)
+      string.chars.each_slice(seglen * 5).map{|r| r.each_slice(seglen).map{|c| from_hex_string_to_lane(c.join)}}.transpose
     end
 
     def convert_table_to_string (table)
       # convert a 5x5 matrix representation to its string representation
       raise "w is not a multiple of 8" if not (@w % 8) == 0
-      dir "table must be 5x5" if not (table.length == 5 and table.select{|c| c.length == 5}.length == 5)
-
-      ret = [""] * 25
-      (0...5).each do |x|
-        (0...5).each do |y|
-          ret[(5 * y + x)] = from_lane_to_hex_string(table[x][y])
-        end
-      end
-      return ret.join("").upcase
+      raise "table must be 5x5" if not (table.length == 5 and table.select{|c| c.length == 5}.length == 5)
+      table.transpose.map{|r| r.map{|c| from_lane_to_hex_string(c)}.join}.join
     end
 
     def round (a, rc_fixed)
@@ -131,7 +102,9 @@ class Keccak
     def keccak_f (a)
       # perform Keccak-f function on the state A
       # a: 5x5 matrix containing the state
-      (0...@nr).each do |i|
+      l = Math.log2(@w).floor
+      nr = 12 + (2 * l)
+      (0...nr).each do |i|
         a = round(a, RC[i] % (1 << @w))
       end
       return a
