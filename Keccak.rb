@@ -19,6 +19,9 @@ class Keccak
          [62,  6, 43, 15, 61], [28, 55, 25, 21, 56],
          [27, 20, 39,  8, 14]]
 
+    # iteration for 5x5 martix
+    MATRIX_ITER = lambda {|block| (0...5).each {|x| (0...5).each {|y| block.call(x, y) } } }
+
     def set_b (b)
       if not [25, 50, 100, 200, 400, 800, 1600].include? b
         raise "b value not supported - use 25, 50, 100, 200, 400, 800, or 1600"
@@ -37,7 +40,7 @@ class Keccak
       # convert a string of bytes written in hex to a lane value
       # example: string = "5f085c1f91f2e5eb", returns 0xebe5f2911f5c085f
       raise "The provided string does not end with a full byte" if not (string.length % 2) == 0
-      string.scan(/../).reverse.join.to_i(16)
+      string.chars.each_slice(2).to_a.reverse.join.to_i(16)
     end
 
     def from_lane_to_hex_string (lane)
@@ -67,34 +70,21 @@ class Keccak
       # a: current state (5x5 matrix representation)
       # rc_fixed: value of round constant to use (integer)
       b = ([0] * 25).each_slice(5).to_a
-      c = [0] * 5
-      d = [0] * 5
+      c, d = [0] * 5, [0] * 5
 
       # Theta step
-      (0...5).each {|x| c[x] = a[x][0] ^ a[x][1] ^ a[x][2] ^ a[x][3] ^ a[x][4]}
-      (0...5).each {|x| d[x] = c[(x - 1) % 5] ^ rot(c[(x + 1) %5], 1)}
-      (0...5).each do |x|
-        (0...5).each do |y|
-          a[x][y] = a[x][y] ^ d[x]
-        end
-      end
+      (0...5).each {|x| c[x] = a[x].reduce(:^) }
+      (0...5).each {|x| d[x] = c[(x - 1) % 5] ^ rot(c[(x + 1) % 5], 1) }
+      MATRIX_ITER.call(lambda {|x, y| a[x][y] ^= d[x] })
 
       # Rho and Pi steps
-      (0...5).each do |x|
-        (0...5).each do |y|
-          b[y][(2*x + 3*y) % 5] = rot(a[x][y], R[x][y])
-        end
-      end
+      MATRIX_ITER.call(lambda {|x, y| b[y][(2*x + 3*y) % 5] = rot(a[x][y], R[x][y]) })
 
       # Chi step
-      (0...5).each do |x|
-        (0...5).each do |y|
-          a[x][y] = b[x][y] ^ ((~b[(x + 1) % 5][y]) & b[(x + 2) % 5][y])
-        end
-      end
+      MATRIX_ITER.call(lambda {|x, y| a[x][y] = b[x][y] ^ ((~b[(x + 1) % 5][y]) & b[(x + 2) % 5][y]) })
 
       # Iota step
-      a[0][0] = a[0][0] ^ rc_fixed
+      a[0][0] ^= rc_fixed
 
       return a
     end
@@ -102,11 +92,8 @@ class Keccak
     def keccak_f (a)
       # perform Keccak-f function on the state A
       # a: 5x5 matrix containing the state
-      l = Math.log2(@w).floor
-      nr = 12 + (2 * l)
-      (0...nr).each do |i|
-        a = round(a, RC[i] % (1 << @w))
-      end
+      nr = 12 + (2 * Math.log2(@w).floor)
+      (0...nr).each { |i| a = round(a, RC[i] % (1 << @w)) }
       return a
     end
 
@@ -124,22 +111,21 @@ class Keccak
 
       nr_bytes_filled = string_len / 8
       nbr_bits_filled = string_len % 8
+
+      byte = (nbr_bits_filled == 0) ? 0 : string[(nr_bytes_filled*2)...(nr_bytes_filled*2+2)].to_i(16)
+      byte >>= (8 - nbr_bits_filled)
+      byte += (2 ** nbr_bits_filled)
+
+      string = string[0...nr_bytes_filled * 2]
       l = string_len % n
-      if ((n - 8) <= l && l <= (n - 2))
-        byte = (nbr_bits_filled == 0) ? 0 : string[(nr_bytes_filled*2)...(nr_bytes_filled*2+2)].to_i(16)
-        byte = (byte >> (8 - nbr_bits_filled))
-        byte = byte + (2 ** nbr_bits_filled) + (2 ** 7)
-        string = string[0...(nr_bytes_filled*2)] + ("%02X" % byte)
-      else
-        byte = (nbr_bits_filled == 0) ? 0 : string[(nr_bytes_filled*2)...(nr_bytes_filled*2+2)].to_i(16)
-        byte = (byte >> (8 - nbr_bits_filled))
-        byte = byte + (2 ** nbr_bits_filled) # different to above
-        string = string[0...(nr_bytes_filled*2)] + ("%02X" % byte)
-        while ((8 * string.length / 2) % n) < (n - 8) do
-          string = "#{string}00"
-        end
-        string = "#{string}80"
+      if (n - 8) <= l and l <= (n - 2)
+        byte += (2 ** 7)
+        return "#{string}#{"%02X" % byte}"
       end
+
+      string = "#{string}#{"%02X" % byte}"
+      string = "#{string}00" while ((8 * string.length / 2) % n) < (n - 8)
+      return "#{string}80"
     end
 
     def keccak (m, r=1024, c=576, n=1024)
@@ -163,12 +149,7 @@ class Keccak
       # absorbing phase
       (0...(p.length * 8 / 2 / r)).each do |i|
         pi = convert_string_to_table(p[i*(2*r/8)...(i+1)*(2*r/8)] + "00" * (c / 8))
-  
-        (0...5).each do |y|
-          (0...5).each do |x|
-            s[x][y] = s[x][y] ^ pi[x][y]
-          end
-        end
+        MATRIX_ITER.call(lambda {|x, y| s[x][y] ^= pi[x][y] })
         s = keccak_f(s)
       end
   
@@ -185,9 +166,3 @@ class Keccak
       return z[0...(2*n/8)]
     end
 end
-
-# Example
-# hasher = Keccak.new
-# digest = hasher.keccak([128, "00112233445566778899AABBCCDDEEFF"], 576, 1024, 512)
-# puts digest
-
